@@ -6,7 +6,8 @@
 // bootstrapped via `npm run seed:super-admin`.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -42,11 +43,11 @@ model User {
   role         Role     @default(user)
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  wordProgress  WordProgress[]
-  reviews       Review[]
-  dailyStats    DailyStat[]
-  setting       Setting?
-  createdWords  Word[]         @relation("WordCreatedBy")
+  wordProgress WordProgress[]
+  reviews      Review[]
+  dailyStats   DailyStat[]
+  setting      Setting?
+  createdWords Word[]         @relation("WordCreatedBy")
 
   @@index([email], map: "idx_users_email")
   @@map("users")
@@ -76,20 +77,20 @@ model Word {
 }
 
 model WordProgress {
-  id            Int        @id @default(autoincrement())
-  userId        String     @map("user_id") @db.Uuid
-  wordId        Int        @map("word_id")
-  status        WordStatus @default(new)
-  easeFactor    Float      @default(2.5) @map("ease_factor") @db.Real
-  intervalDays  Float      @default(0) @map("interval_days") @db.Real
-  nextReviewAt  DateTime?  @map("next_review_at") @db.Timestamptz(6)
-  streak        Int        @default(0)
-  missCount     Int        @default(0) @map("miss_count")
-  reviewCount   Int        @default(0) @map("review_count")
-  correctCount  Int        @default(0) @map("correct_count")
-  isBookmarked  Boolean    @default(false) @map("is_bookmarked")
-  lastReviewAt  DateTime?  @map("last_review_at") @db.Timestamptz(6)
-  introducedAt  DateTime?  @map("introduced_at") @db.Timestamptz(6)
+  id           Int        @id @default(autoincrement())
+  userId       String     @map("user_id") @db.Uuid
+  wordId       Int        @map("word_id")
+  status       WordStatus @default(new)
+  easeFactor   Float      @default(2.5) @map("ease_factor") @db.Real
+  intervalDays Float      @default(0) @map("interval_days") @db.Real
+  nextReviewAt DateTime?  @map("next_review_at") @db.Timestamptz(6)
+  streak       Int        @default(0)
+  missCount    Int        @default(0) @map("miss_count")
+  reviewCount  Int        @default(0) @map("review_count")
+  correctCount Int        @default(0) @map("correct_count")
+  isBookmarked Boolean    @default(false) @map("is_bookmarked")
+  lastReviewAt DateTime?  @map("last_review_at") @db.Timestamptz(6)
+  introducedAt DateTime?  @map("introduced_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
