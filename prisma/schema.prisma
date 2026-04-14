@@ -1,0 +1,150 @@
+// VocabMind backend data model
+//
+// Mirrors the Drizzle schema from VocabMind/src/lib/db/schema.ts with 3 role
+// changes: Role enum now has user | moderator | super_admin. ADMIN_EMAILS env
+// is gone — roles live in the users.role column only. Super admin is
+// bootstrapped via `npm run seed:super-admin`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  moderator
+  super_admin
+}
+
+enum WordStatus {
+  new
+  learning
+  familiar
+  mastered
+}
+
+enum ReviewRating {
+  wrong
+  hard
+  good
+  easy
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String?
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  role         Role     @default(user)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  wordProgress  WordProgress[]
+  reviews       Review[]
+  dailyStats    DailyStat[]
+  setting       Setting?
+  createdWords  Word[]         @relation("WordCreatedBy")
+
+  @@index([email], map: "idx_users_email")
+  @@map("users")
+}
+
+model Word {
+  id            Int      @id @default(autoincrement())
+  word          String   @unique
+  bangla        String
+  definition    String
+  partOfSpeech  String   @map("part_of_speech")
+  pronunciation String?
+  category      String
+  sentences     Json     @default("[]")
+  collocations  String[]
+  usageTip      String?  @map("usage_tip")
+  difficulty    Int      @default(5)
+  createdById   String?  @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  createdBy    User?          @relation("WordCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  wordProgress WordProgress[]
+  reviews      Review[]
+
+  @@index([category], map: "idx_words_category")
+  @@map("words")
+}
+
+model WordProgress {
+  id            Int        @id @default(autoincrement())
+  userId        String     @map("user_id") @db.Uuid
+  wordId        Int        @map("word_id")
+  status        WordStatus @default(new)
+  easeFactor    Float      @default(2.5) @map("ease_factor") @db.Real
+  intervalDays  Float      @default(0) @map("interval_days") @db.Real
+  nextReviewAt  DateTime?  @map("next_review_at") @db.Timestamptz(6)
+  streak        Int        @default(0)
+  missCount     Int        @default(0) @map("miss_count")
+  reviewCount   Int        @default(0) @map("review_count")
+  correctCount  Int        @default(0) @map("correct_count")
+  isBookmarked  Boolean    @default(false) @map("is_bookmarked")
+  lastReviewAt  DateTime?  @map("last_review_at") @db.Timestamptz(6)
+  introducedAt  DateTime?  @map("introduced_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId], map: "idx_word_progress_user_word")
+  @@index([nextReviewAt], map: "idx_word_progress_next_review")
+  @@index([status], map: "idx_word_progress_status")
+  @@index([userId], map: "idx_word_progress_user")
+  @@map("word_progress")
+}
+
+model Review {
+  id             Int          @id @default(autoincrement())
+  userId         String       @map("user_id") @db.Uuid
+  wordId         Int          @map("word_id")
+  exerciseType   String       @map("exercise_type")
+  isCorrect      Boolean      @map("is_correct")
+  responseTimeMs Int?         @map("response_time_ms")
+  rating         ReviewRating
+  reviewedAt     DateTime     @default(now()) @map("reviewed_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@index([userId, wordId], map: "idx_reviews_user_word")
+  @@index([reviewedAt], map: "idx_reviews_date")
+  @@map("reviews")
+}
+
+model DailyStat {
+  id               Int      @id @default(autoincrement())
+  userId           String   @map("user_id") @db.Uuid
+  date             DateTime @db.Date
+  newWordsLearned  Int      @default(0) @map("new_words_learned")
+  reviewsCompleted Int      @default(0) @map("reviews_completed")
+  correctReviews   Int      @default(0) @map("correct_reviews")
+  timeSpentSeconds Int      @default(0) @map("time_spent_seconds")
+  streakDay        Boolean  @default(false) @map("streak_day")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date], map: "idx_daily_stats_user_date")
+  @@map("daily_stats")
+}
+
+model Setting {
+  userId            String    @id @map("user_id") @db.Uuid
+  dailyNewWords     Int       @default(7) @map("daily_new_words")
+  currentStreak     Int       @default(0) @map("current_streak")
+  longestStreak     Int       @default(0) @map("longest_streak")
+  totalWordsLearned Int       @default(0) @map("total_words_learned")
+  lastActiveDate    DateTime? @map("last_active_date") @db.Date
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("settings")
+}

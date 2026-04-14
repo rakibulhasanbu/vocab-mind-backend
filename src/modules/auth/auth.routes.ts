@@ -1,0 +1,12 @@
+import { Hono } from "hono";
+import { authMiddleware } from "../../middleware/auth.js";
+import { validate } from "../../middleware/validate.js";
+import { authController } from "./auth.controller.js";
+import { loginSchema, registerSchema } from "./auth.schema.js";
+
+export const authRoutes = new Hono();
+
+authRoutes.post("/register", validate(registerSchema), authController.register);
+authRoutes.post("/login", validate(loginSchema), authController.login);
+authRoutes.post("/logout", authMiddleware, authController.logout);
+authRoutes.get("/me", authMiddleware, authController.me);
